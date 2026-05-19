@@ -46,10 +46,18 @@
     "@types/react": "19.2.2",
     "jest": "29.7.0",
     "jest-expo": "55.0.17",
+    "loro-crdt": "^1.12.1",
     "typescript": "5.9.2"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|loro-react-native|uniffi-bindgen-react-native)"
+    ],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^loro-react-native$": "<rootDir>/tests/shims/loro-react-native.ts"
+    }
   },
   "private": true
 }
