@@ -9,7 +9,6 @@ export class LoroAdapterRepository implements WriteCalendarInterface {
   upsertMeal(day: DAY, meal: string, recipeId: ID): void {
     const week = this.document.getMap(CALENDARS.WEEK);
 
-    // Check if the day sub-map already exists
     let dayMap = week.get(day) as LoroMap | undefined;
 
     if (!dayMap) {

@@ -1,4 +1,6 @@
-import { Recipe } from "./recipe";
+import { ID } from "./ids";
+import { MealOp, OPERATION } from "./operations";
+import { Trie } from "./trie";
 
 enum CALENDARS {
   WEEK = "week",
@@ -14,16 +16,60 @@ enum DAY {
   SUNDAY = "sunday",
 }
 
-// This is the VIEW representation. CRDTs will be used in the repository to make them work as the "persistance layer"
-// In reality, 2 things will happen. We will be using CRDTs for sharing and reconciling the conflicts and the actual persistance layer
-// in SQLlite which will reflect the merged and final view.
-// How can I do it? I think I would need 2 repositories, 1 for the crdt and another for the sqlite. I would need a service that will act as
-// the joiner of both and this is the actual thing it is called. This is my business at the end.
-class Calendar {
-  public weekdays: Recipe[][] = [];
-  constructor() {
-    this.weekdays = [];
+class MealSlot {
+  day: DAY;
+  mealName: string;
+  recipeId: ID;
+  op: MealOp;
+
+  constructor(day: DAY, mealName: string, recipeId: ID, op: MealOp) {
+    this.day = day;
+    this.mealName = mealName;
+    this.recipeId = recipeId;
+    this.op = op;
   }
 }
 
-export { Calendar, DAY, CALENDARS };
+class Calendar {
+  private trie: Trie<ID>;
+
+  constructor(weekdays?: Map<DAY, Map<string, ID>>) {
+    this.trie = new Trie<ID>();
+    if (!weekdays) {
+      return;
+    }
+    for (const [day, meals] of weekdays) {
+      for (const [mealName, recipeId] of meals) {
+        this.trie.set([day, mealName], recipeId);
+      }
+    }
+  }
+
+  setMeal(day: DAY, mealName: string, recipeId: ID): void {
+    this.trie.set([day, mealName], recipeId);
+  }
+
+  getMeal(day: DAY, mealName: string): ID | undefined {
+    return this.trie.get([day, mealName]);
+  }
+
+  diff(newCalendar: Calendar): MealSlot[] {
+    return this.trie
+      .diff(newCalendar.trie)
+      .map(({ path, oldValue, newValue }) => {
+        const [day, mealName] = path as [DAY, string];
+        let id = newValue;
+        let isRemove = false;
+        let operation = OPERATION.UPSERT;
+        if (!id) {
+          isRemove = true;
+          id = oldValue;
+          operation = OPERATION.REMOVE;
+        }
+
+        return new MealSlot(day, mealName, id as ID, operation);
+      });
+  }
+}
+
+export { Calendar, MealSlot, DAY, CALENDARS };

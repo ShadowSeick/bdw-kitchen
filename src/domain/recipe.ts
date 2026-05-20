@@ -1,10 +1,10 @@
 class Recipe {
-  title: string;
+  name: string;
   description: string;
 
-  constructor() {
-    this.title = "";
-    this.description = "";
+  constructor(name: string, description: string) {
+    this.name = name;
+    this.description = description;
   }
 }
 
