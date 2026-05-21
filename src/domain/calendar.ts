@@ -16,6 +16,8 @@ enum DAY {
   SUNDAY = "sunday",
 }
 
+const DAY_VALUES = new Set<string>(Object.values(DAY));
+
 class MealSlot {
   day: DAY;
   mealName: string;
@@ -72,4 +74,4 @@ class Calendar {
   }
 }
 
-export { Calendar, MealSlot, DAY, CALENDARS };
+export { Calendar, MealSlot, DAY, DAY_VALUES, CALENDARS };

@@ -6,7 +6,7 @@ import { mealSlot } from "@/infra/db/schema";
 import { DB } from "@/infra/db/db";
 import { WriteCalendarInterface } from "./interface";
 
-export class SQLiteAdapterRepository implements WriteCalendarInterface {
+export class CalendarSQLiteAdapterRepository implements WriteCalendarInterface {
   constructor(private db: DB) {}
 
   upsertMeal(day: DAY, meal: string, recipeId: ID): void {

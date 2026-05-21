@@ -1,18 +1,9 @@
-import { CALENDARS, DAY } from "@/domain/calendar";
-import { LoroAdapterRepository } from "@/repository/calendar/LoroAdapter";
-import { LoroDoc, LoroMap } from "loro-react-native";
+import { DAY } from "@/domain/calendar";
+import { CalendarLoroAdapterRepository } from "@/repository/calendar/CalendarLoroAdapter";
 
-describe("Calendar Loro Adapter", () => {
-  const calendar = new LoroDoc();
-  const adapter = new LoroAdapterRepository(calendar);
-  let week: LoroMap;
-
-  beforeAll(() => {
-    week = calendar.getMap(CALENDARS.WEEK);
-    Object.values(DAY).forEach((day) => {
-      week.setContainer(day, new LoroMap());
-    });
-  });
+describe("Calendar CalendarLoro Adapter", () => {
+  const calendar = CalendarLoroAdapterRepository.createCalendarDoc();
+  const adapter = new CalendarLoroAdapterRepository(calendar);
 
   test("it should add and remove the same meal", () => {
     adapter.upsertMeal(DAY.MONDAY, "almuerzo", "12345");

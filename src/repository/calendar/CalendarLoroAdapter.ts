@@ -3,7 +3,16 @@ import { WriteCalendarInterface } from "./interface";
 import { LoroDoc, LoroMap } from "loro-react-native";
 import { ID } from "@/domain/ids";
 
-export class LoroAdapterRepository implements WriteCalendarInterface {
+export class CalendarLoroAdapterRepository implements WriteCalendarInterface {
+  static createCalendarDoc() {
+    const doc = new LoroDoc();
+    const week = doc.getMap(CALENDARS.WEEK);
+    Object.values(DAY).forEach((day) => {
+      week.setContainer(day, new LoroMap());
+    });
+    return doc;
+  }
+
   constructor(private document: LoroDoc) {}
 
   upsertMeal(day: DAY, meal: string, recipeId: ID): void {
