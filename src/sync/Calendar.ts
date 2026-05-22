@@ -11,17 +11,24 @@ import {
 
 import { DAY, DAY_VALUES } from "@/domain/calendar";
 import { ID } from "@/domain/ids";
-import { WriteCalendarInterface } from "@/repository/calendar/interface";
+import {
+  CalendarBlobStore,
+  CalendarWriteRepository,
+} from "@/repository/calendar/interface";
+import { SyncInterface } from "./interface";
+import { Batcher } from "./Batcher";
 
-// This needs a full rewrite to understand how subscription works and how to do it best
-export class CalendarSync {
+export class CalendarSync implements SyncInterface {
   private subscriptions: SubscriptionInterface[];
+  private persistSnapshotBatcher: Batcher<number>;
 
   constructor(
     private doc: LoroDoc,
-    private repository: WriteCalendarInterface,
+    private writer: CalendarWriteRepository,
+    private blobStore: CalendarBlobStore,
   ) {
     this.subscriptions = [];
+    this.persistSnapshotBatcher = new Batcher(this.persistSnapshot.bind(this));
   }
 
   start(): void {
@@ -33,11 +40,13 @@ export class CalendarSync {
       for (const containerDiff of event.events) {
         this.apply(containerDiff);
       }
+      this.persistSnapshotBatcher.add(1);
     });
     this.subscriptions.push(changesSubscription);
   }
 
   stop(): void {
+    this.persistSnapshotBatcher.flushNow();
     this.subscriptions.forEach((sub) => {
       sub.unsubscribe();
     });
@@ -48,6 +57,7 @@ export class CalendarSync {
     if (containerDiff.diff.tag !== Diff_Tags.Map) {
       return;
     }
+
     const day = this.dayFromPath(containerDiff.path);
     if (!day) {
       return;
@@ -56,7 +66,7 @@ export class CalendarSync {
     const updated = containerDiff.diff.inner.diff.updated;
     for (const [mealName, valueOrContainer] of updated) {
       if (valueOrContainer === undefined) {
-        this.repository.removeMeal(day, mealName);
+        this.writer.removeMeal(day, mealName);
         continue;
       }
 
@@ -64,22 +74,34 @@ export class CalendarSync {
       if (!value || value.tag !== LoroValue_Tags.String) {
         continue;
       }
-      this.repository.upsertMeal(day, mealName, value.inner.value as ID);
+      this.writer.upsertMeal(day, mealName, value.inner.value as ID);
     }
+  }
+
+  private persistSnapshot(updates: number[]): void {
+    if (updates.length === 0) {
+      return;
+    }
+
+    const snapshot = this.doc.exportSnapshot();
+    this.blobStore.saveBlob(new Uint8Array(snapshot));
   }
 
   private dayFromPath(path: Array<PathItem>): DAY | undefined {
     if (path.length === 0) {
       return undefined;
     }
+
     const last = path[path.length - 1];
     if (last.index.tag !== Index_Tags.Key) {
       return undefined;
     }
+
     const key = last.index.inner.key;
     if (!DAY_VALUES.has(key)) {
       return undefined;
     }
+
     return key as DAY;
   }
 }

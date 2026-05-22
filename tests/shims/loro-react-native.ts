@@ -94,6 +94,12 @@ function translateEvent(event: any) {
   };
 }
 
+if (!(LoroDoc.prototype as any).exportSnapshot) {
+  (LoroDoc.prototype as any).exportSnapshot = function () {
+    return this.export({ mode: "snapshot" });
+  };
+}
+
 if (!(LoroDoc.prototype as any).subscribeRoot) {
   (LoroDoc.prototype as any).subscribeRoot = function (cb: (event: any) => void) {
     const unsub = this.subscribe((batch: any) => {

@@ -1,9 +1,9 @@
 import { CALENDARS, DAY } from "@/domain/calendar";
-import { WriteCalendarInterface } from "./interface";
+import { CalendarWriteRepository } from "./interface";
 import { LoroDoc, LoroMap } from "loro-react-native";
 import { ID } from "@/domain/ids";
 
-export class CalendarLoroAdapterRepository implements WriteCalendarInterface {
+export class CalendarLoroAdapterRepository implements CalendarWriteRepository {
   static createCalendarDoc() {
     const doc = new LoroDoc();
     const week = doc.getMap(CALENDARS.WEEK);

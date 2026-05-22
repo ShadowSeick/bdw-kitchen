@@ -1,5 +1,5 @@
-import { DAY } from "@/domain/calendar";
-import { CalendarLoroAdapterRepository } from "@/repository/calendar/CalendarLoroAdapter";
+import { DAY } from "@/domain";
+import { CalendarLoroAdapterRepository } from "@/repository/calendar";
 
 describe("Calendar CalendarLoro Adapter", () => {
   const calendar = CalendarLoroAdapterRepository.createCalendarDoc();

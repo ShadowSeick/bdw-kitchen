@@ -1,8 +1,15 @@
-import { sqliteTable, text, index, primaryKey } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  text,
+  index,
+  primaryKey,
+  blob,
+} from "drizzle-orm/sqlite-core";
 
 export const calendar = sqliteTable("calendar", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  blob: blob("blob", { mode: "buffer" }).notNull(),
 });
 
 export const day = sqliteTable(

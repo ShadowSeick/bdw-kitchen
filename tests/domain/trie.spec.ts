@@ -1,4 +1,4 @@
-import { Trie } from "@/domain/trie";
+import { Trie } from "@/domain";
 
 describe("Trie", () => {
   it("stores and retrieves values by path", () => {

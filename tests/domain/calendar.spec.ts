@@ -1,5 +1,5 @@
-import { Calendar, DAY, MealSlot } from "@/domain/calendar";
-import { OPERATION } from "@/domain/operations";
+import { Calendar, DAY, MealSlot } from "@/domain";
+import { OPERATION } from "@/domain";
 
 describe("Calendar", () => {
   it("should initiate with a proper calendar", () => {
@@ -271,12 +271,7 @@ describe("Calendar", () => {
       expect(diff).toHaveLength(3);
       expect(diff).toEqual(
         expect.arrayContaining([
-          new MealSlot(
-            DAY.TUESDAY,
-            "lunch",
-            "recipe-2-new",
-            OPERATION.UPSERT,
-          ),
+          new MealSlot(DAY.TUESDAY, "lunch", "recipe-2-new", OPERATION.UPSERT),
           new MealSlot(DAY.FRIDAY, "dinner", "recipe-3", OPERATION.REMOVE),
           new MealSlot(DAY.SUNDAY, "brunch", "recipe-4", OPERATION.UPSERT),
         ]),
@@ -304,9 +299,7 @@ describe("Calendar", () => {
       const oldCalendar = new Calendar(
         new Map([[DAY.MONDAY, new Map([["breakfast", "recipe-1"]])]]),
       );
-      const newCalendar = new Calendar(
-        new Map([[DAY.MONDAY, new Map()]]),
-      );
+      const newCalendar = new Calendar(new Map([[DAY.MONDAY, new Map()]]));
       expect(oldCalendar.diff(newCalendar)).toEqual([
         new MealSlot(DAY.MONDAY, "breakfast", "recipe-1", OPERATION.REMOVE),
       ]);

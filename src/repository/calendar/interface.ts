@@ -1,14 +1,15 @@
-import { Calendar, DAY } from "@/domain/calendar";
+import { DAY } from "@/domain/calendar";
 import { ID } from "@/domain/ids";
 
-// Need to think this through
-interface WriteCalendarInterface {
-  upsertMeal(day: DAY, meal: string, recipeId: ID): void; // Add and or update a meal
+export interface CalendarWriteRepository {
+  upsertMeal(day: DAY, meal: string, recipeId: ID): void;
   removeMeal(day: DAY, meal: string): void;
 }
 
-interface ReadCalendarInterface {
-  get(id: ID): Calendar;
+export interface CalendarReadRepository {
+  loadBlob(): ArrayBuffer | undefined;
 }
 
-export { WriteCalendarInterface, ReadCalendarInterface };
+export interface CalendarBlobStore {
+  saveBlob(bytes: Uint8Array): void;
+}
