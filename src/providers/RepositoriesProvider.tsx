@@ -1,16 +1,17 @@
 import { createContext, ReactNode, useContext, useRef } from "react";
-import { LoroDoc } from "loro-react-native";
 import { DB } from "@/infra/db/db";
 import {
   CalendarLoroAdapterRepository,
+  CalendarLoroAdapterSubscriptor,
   CalendarSQLiteAdapterRepository,
+  CalendarSubscription,
   CalendarWriteRepository,
 } from "@/repository/calendar";
 
 type CalendarRepositories = {
-  persistent: CalendarSQLiteAdapterRepository;
-  crdt: CalendarWriteRepository;
-  doc: LoroDoc;
+  query: CalendarSQLiteAdapterRepository;
+  write: CalendarWriteRepository;
+  subscriber: CalendarSubscription;
 };
 
 export type Repositories = {
@@ -19,21 +20,18 @@ export type Repositories = {
 
 const RepositoriesContext = createContext<Repositories | null>(null);
 
-// Here I will initialize all repositories and build the expected documents
 const buildRepositories = (db: DB): Repositories => {
   const calendarSQLite = new CalendarSQLiteAdapterRepository(db);
 
-  const calendarDoc = CalendarLoroAdapterRepository.createCalendarDoc();
   const calendarBlob = calendarSQLite.loadBlob();
-  if (calendarBlob) {
-    calendarDoc.importBatch([calendarBlob]);
-  }
+  const calendarManifest = new CalendarLoroAdapterRepository(calendarBlob);
+  const calendarSubscription = new CalendarLoroAdapterSubscriptor(calendarManifest);
 
   return {
     calendar: {
-      persistent: calendarSQLite,
-      crdt: new CalendarLoroAdapterRepository(calendarDoc),
-      doc: calendarDoc,
+      query: calendarSQLite,
+      write: calendarManifest,
+      subscriber: calendarSubscription,
     },
   };
 };

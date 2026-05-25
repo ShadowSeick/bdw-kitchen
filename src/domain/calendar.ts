@@ -32,19 +32,25 @@ class MealSlot {
   }
 }
 
+type CalendarView = Record<CALENDARS.WEEK, CalendarDay>;
+type CalendarDay = Record<DAY, ID[]>;
+
 class Calendar {
   private trie: Trie<ID>;
 
-  constructor(weekdays?: Map<DAY, Map<string, ID>>) {
+  constructor() {
     this.trie = new Trie<ID>();
-    if (!weekdays) {
-      return;
-    }
-    for (const [day, meals] of weekdays) {
-      for (const [mealName, recipeId] of meals) {
-        this.trie.set([day, mealName], recipeId);
+  }
+
+  static fromJson(weekdays: CalendarView): Calendar {
+    const calendar = new Calendar();
+    const weekday = weekdays[CALENDARS.WEEK];
+    for (const day in weekday) {
+      for (const [mealName, recipeId] of weekday[day as DAY]) {
+        calendar.setMeal(day as DAY, mealName, recipeId);
       }
     }
+    return calendar;
   }
 
   setMeal(day: DAY, mealName: string, recipeId: ID): void {
@@ -74,4 +80,4 @@ class Calendar {
   }
 }
 
-export { Calendar, MealSlot, DAY, DAY_VALUES, CALENDARS };
+export { Calendar, CalendarView, MealSlot, DAY, DAY_VALUES, CALENDARS };

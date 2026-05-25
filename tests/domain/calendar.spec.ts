@@ -1,27 +1,37 @@
 import { Calendar, DAY, MealSlot } from "@/domain";
 import { OPERATION } from "@/domain";
 
+const makeCalendar = (
+  meals: Iterable<readonly [DAY, Iterable<readonly [string, string]>]> = [],
+): Calendar => {
+  const calendar = new Calendar();
+  for (const [day, dayMeals] of meals) {
+    for (const [mealName, recipeId] of dayMeals) {
+      calendar.setMeal(day, mealName, recipeId);
+    }
+  }
+  return calendar;
+};
+
 describe("Calendar", () => {
   it("should initiate with a proper calendar", () => {
     const empty = new Calendar();
     expect(empty.getMeal(DAY.MONDAY, "breakfast")).toBeUndefined();
     expect(empty.diff(new Calendar())).toEqual([]);
 
-    const fromEmptyMap = new Calendar(new Map());
+    const fromEmptyMap = makeCalendar();
     expect(fromEmptyMap.getMeal(DAY.MONDAY, "breakfast")).toBeUndefined();
 
-    const calendar = new Calendar(
-      new Map([
+    const calendar = makeCalendar([
+      [
+        DAY.MONDAY,
         [
-          DAY.MONDAY,
-          new Map([
-            ["breakfast", "recipe-1"],
-            ["lunch", "recipe-2"],
-          ]),
+          ["breakfast", "recipe-1"],
+          ["lunch", "recipe-2"],
         ],
-        [DAY.TUESDAY, new Map([["dinner", "recipe-3"]])],
-      ]),
-    );
+      ],
+      [DAY.TUESDAY, [["dinner", "recipe-3"]]],
+    ]);
     expect(calendar.getMeal(DAY.MONDAY, "breakfast")).toBe("recipe-1");
     expect(calendar.getMeal(DAY.MONDAY, "lunch")).toBe("recipe-2");
     expect(calendar.getMeal(DAY.TUESDAY, "dinner")).toBe("recipe-3");
@@ -33,22 +43,20 @@ describe("Calendar", () => {
 
   it("should get the right meal recipes diff", () => {
     // empty vs empty -> no changes
-    expect(new Calendar(new Map()).diff(new Calendar(new Map()))).toEqual([]);
+    expect(makeCalendar().diff(makeCalendar())).toEqual([]);
 
     // empty -> populated: every meal becomes an upsert
     {
-      const oldCalendar = new Calendar(new Map());
-      const newCalendar = new Calendar(
-        new Map([
+      const oldCalendar = makeCalendar();
+      const newCalendar = makeCalendar([
+        [
+          DAY.MONDAY,
           [
-            DAY.MONDAY,
-            new Map([
-              ["breakfast", "recipe-1"],
-              ["lunch", "recipe-2"],
-            ]),
+            ["breakfast", "recipe-1"],
+            ["lunch", "recipe-2"],
           ],
-        ]),
-      );
+        ],
+      ]);
       const diff = oldCalendar.diff(newCalendar);
       expect(diff).toHaveLength(2);
       expect(diff).toEqual(
@@ -61,18 +69,16 @@ describe("Calendar", () => {
 
     // populated -> empty: every meal becomes a remove
     {
-      const oldCalendar = new Calendar(
-        new Map([
+      const oldCalendar = makeCalendar([
+        [
+          DAY.MONDAY,
           [
-            DAY.MONDAY,
-            new Map([
-              ["breakfast", "recipe-1"],
-              ["lunch", "recipe-2"],
-            ]),
+            ["breakfast", "recipe-1"],
+            ["lunch", "recipe-2"],
           ],
-        ]),
-      );
-      const newCalendar = new Calendar(new Map());
+        ],
+      ]);
+      const newCalendar = makeCalendar();
       const diff = oldCalendar.diff(newCalendar);
       expect(diff).toHaveLength(2);
       expect(diff).toEqual(
@@ -85,30 +91,31 @@ describe("Calendar", () => {
 
     // identical calendars -> no changes
     {
-      const buildWeekdays = () =>
-        new Map([
+      const buildWeekdays = (): Array<
+        readonly [DAY, ReadonlyArray<readonly [string, string]>]
+      > => [
+        [
+          DAY.MONDAY,
           [
-            DAY.MONDAY,
-            new Map([
-              ["breakfast", "recipe-1"],
-              ["lunch", "recipe-2"],
-            ]),
+            ["breakfast", "recipe-1"],
+            ["lunch", "recipe-2"],
           ],
-          [DAY.TUESDAY, new Map([["dinner", "recipe-3"]])],
-        ]);
-      const oldCalendar = new Calendar(buildWeekdays());
-      const newCalendar = new Calendar(buildWeekdays());
+        ],
+        [DAY.TUESDAY, [["dinner", "recipe-3"]]],
+      ];
+      const oldCalendar = makeCalendar(buildWeekdays());
+      const newCalendar = makeCalendar(buildWeekdays());
       expect(oldCalendar.diff(newCalendar)).toEqual([]);
     }
 
     // same meal name with a different recipe id -> upsert with new id
     {
-      const oldCalendar = new Calendar(
-        new Map([[DAY.MONDAY, new Map([["breakfast", "recipe-1"]])]]),
-      );
-      const newCalendar = new Calendar(
-        new Map([[DAY.MONDAY, new Map([["breakfast", "recipe-2"]])]]),
-      );
+      const oldCalendar = makeCalendar([
+        [DAY.MONDAY, [["breakfast", "recipe-1"]]],
+      ]);
+      const newCalendar = makeCalendar([
+        [DAY.MONDAY, [["breakfast", "recipe-2"]]],
+      ]);
       expect(oldCalendar.diff(newCalendar)).toEqual([
         new MealSlot(DAY.MONDAY, "breakfast", "recipe-2", OPERATION.UPSERT),
       ]);
@@ -116,20 +123,18 @@ describe("Calendar", () => {
 
     // adding a meal to an existing day leaves siblings untouched
     {
-      const oldCalendar = new Calendar(
-        new Map([[DAY.MONDAY, new Map([["breakfast", "recipe-1"]])]]),
-      );
-      const newCalendar = new Calendar(
-        new Map([
+      const oldCalendar = makeCalendar([
+        [DAY.MONDAY, [["breakfast", "recipe-1"]]],
+      ]);
+      const newCalendar = makeCalendar([
+        [
+          DAY.MONDAY,
           [
-            DAY.MONDAY,
-            new Map([
-              ["breakfast", "recipe-1"],
-              ["lunch", "recipe-2"],
-            ]),
+            ["breakfast", "recipe-1"],
+            ["lunch", "recipe-2"],
           ],
-        ]),
-      );
+        ],
+      ]);
       expect(oldCalendar.diff(newCalendar)).toEqual([
         new MealSlot(DAY.MONDAY, "lunch", "recipe-2", OPERATION.UPSERT),
       ]);
@@ -137,20 +142,18 @@ describe("Calendar", () => {
 
     // removing a meal from a day leaves siblings untouched
     {
-      const oldCalendar = new Calendar(
-        new Map([
+      const oldCalendar = makeCalendar([
+        [
+          DAY.MONDAY,
           [
-            DAY.MONDAY,
-            new Map([
-              ["breakfast", "recipe-1"],
-              ["lunch", "recipe-2"],
-            ]),
+            ["breakfast", "recipe-1"],
+            ["lunch", "recipe-2"],
           ],
-        ]),
-      );
-      const newCalendar = new Calendar(
-        new Map([[DAY.MONDAY, new Map([["breakfast", "recipe-1"]])]]),
-      );
+        ],
+      ]);
+      const newCalendar = makeCalendar([
+        [DAY.MONDAY, [["breakfast", "recipe-1"]]],
+      ]);
       expect(oldCalendar.diff(newCalendar)).toEqual([
         new MealSlot(DAY.MONDAY, "lunch", "recipe-2", OPERATION.REMOVE),
       ]);
@@ -158,28 +161,24 @@ describe("Calendar", () => {
 
     // mix of upsert (changed), upsert (added) and remove on the same day
     {
-      const oldCalendar = new Calendar(
-        new Map([
+      const oldCalendar = makeCalendar([
+        [
+          DAY.MONDAY,
           [
-            DAY.MONDAY,
-            new Map([
-              ["breakfast", "recipe-1"],
-              ["lunch", "recipe-2"],
-            ]),
+            ["breakfast", "recipe-1"],
+            ["lunch", "recipe-2"],
           ],
-        ]),
-      );
-      const newCalendar = new Calendar(
-        new Map([
+        ],
+      ]);
+      const newCalendar = makeCalendar([
+        [
+          DAY.MONDAY,
           [
-            DAY.MONDAY,
-            new Map([
-              ["breakfast", "recipe-1-new"],
-              ["dinner", "recipe-3"],
-            ]),
+            ["breakfast", "recipe-1-new"],
+            ["dinner", "recipe-3"],
           ],
-        ]),
-      );
+        ],
+      ]);
       const diff = oldCalendar.diff(newCalendar);
       expect(diff).toHaveLength(3);
       expect(diff).toEqual(
@@ -198,21 +197,19 @@ describe("Calendar", () => {
 
     // a day that exists only in the old calendar -> its meals are removed
     {
-      const oldCalendar = new Calendar(
-        new Map([
-          [DAY.MONDAY, new Map([["breakfast", "recipe-1"]])],
+      const oldCalendar = makeCalendar([
+        [DAY.MONDAY, [["breakfast", "recipe-1"]]],
+        [
+          DAY.TUESDAY,
           [
-            DAY.TUESDAY,
-            new Map([
-              ["lunch", "recipe-2"],
-              ["dinner", "recipe-3"],
-            ]),
+            ["lunch", "recipe-2"],
+            ["dinner", "recipe-3"],
           ],
-        ]),
-      );
-      const newCalendar = new Calendar(
-        new Map([[DAY.MONDAY, new Map([["breakfast", "recipe-1"]])]]),
-      );
+        ],
+      ]);
+      const newCalendar = makeCalendar([
+        [DAY.MONDAY, [["breakfast", "recipe-1"]]],
+      ]);
       const diff = oldCalendar.diff(newCalendar);
       expect(diff).toHaveLength(2);
       expect(diff).toEqual(
@@ -225,21 +222,19 @@ describe("Calendar", () => {
 
     // a day that exists only in the new calendar -> its meals are upserted
     {
-      const oldCalendar = new Calendar(
-        new Map([[DAY.MONDAY, new Map([["breakfast", "recipe-1"]])]]),
-      );
-      const newCalendar = new Calendar(
-        new Map([
-          [DAY.MONDAY, new Map([["breakfast", "recipe-1"]])],
+      const oldCalendar = makeCalendar([
+        [DAY.MONDAY, [["breakfast", "recipe-1"]]],
+      ]);
+      const newCalendar = makeCalendar([
+        [DAY.MONDAY, [["breakfast", "recipe-1"]]],
+        [
+          DAY.WEDNESDAY,
           [
-            DAY.WEDNESDAY,
-            new Map([
-              ["lunch", "recipe-4"],
-              ["dinner", "recipe-5"],
-            ]),
+            ["lunch", "recipe-4"],
+            ["dinner", "recipe-5"],
           ],
-        ]),
-      );
+        ],
+      ]);
       const diff = oldCalendar.diff(newCalendar);
       expect(diff).toHaveLength(2);
       expect(diff).toEqual(
@@ -252,21 +247,17 @@ describe("Calendar", () => {
 
     // multiple days: unchanged, changed, added and removed days all at once
     {
-      const oldCalendar = new Calendar(
-        new Map([
-          [DAY.MONDAY, new Map([["breakfast", "recipe-1"]])],
-          [DAY.TUESDAY, new Map([["lunch", "recipe-2"]])],
-          [DAY.FRIDAY, new Map([["dinner", "recipe-3"]])],
-        ]),
-      );
-      const newCalendar = new Calendar(
-        new Map([
-          [DAY.MONDAY, new Map([["breakfast", "recipe-1"]])], // unchanged
-          [DAY.TUESDAY, new Map([["lunch", "recipe-2-new"]])], // changed id
-          [DAY.SUNDAY, new Map([["brunch", "recipe-4"]])], // new day
-          // FRIDAY removed
-        ]),
-      );
+      const oldCalendar = makeCalendar([
+        [DAY.MONDAY, [["breakfast", "recipe-1"]]],
+        [DAY.TUESDAY, [["lunch", "recipe-2"]]],
+        [DAY.FRIDAY, [["dinner", "recipe-3"]]],
+      ]);
+      const newCalendar = makeCalendar([
+        [DAY.MONDAY, [["breakfast", "recipe-1"]]], // unchanged
+        [DAY.TUESDAY, [["lunch", "recipe-2-new"]]], // changed id
+        [DAY.SUNDAY, [["brunch", "recipe-4"]]], // new day
+        // FRIDAY removed
+      ]);
       const diff = oldCalendar.diff(newCalendar);
       expect(diff).toHaveLength(3);
       expect(diff).toEqual(
@@ -280,26 +271,24 @@ describe("Calendar", () => {
 
     // self-diff -> empty
     {
-      const calendar = new Calendar(
-        new Map([
+      const calendar = makeCalendar([
+        [
+          DAY.MONDAY,
           [
-            DAY.MONDAY,
-            new Map([
-              ["breakfast", "recipe-1"],
-              ["lunch", "recipe-2"],
-            ]),
+            ["breakfast", "recipe-1"],
+            ["lunch", "recipe-2"],
           ],
-        ]),
-      );
+        ],
+      ]);
       expect(calendar.diff(calendar)).toEqual([]);
     }
 
     // empty meal map on a day acts like the day was missing
     {
-      const oldCalendar = new Calendar(
-        new Map([[DAY.MONDAY, new Map([["breakfast", "recipe-1"]])]]),
-      );
-      const newCalendar = new Calendar(new Map([[DAY.MONDAY, new Map()]]));
+      const oldCalendar = makeCalendar([
+        [DAY.MONDAY, [["breakfast", "recipe-1"]]],
+      ]);
+      const newCalendar = makeCalendar([[DAY.MONDAY, []]]);
       expect(oldCalendar.diff(newCalendar)).toEqual([
         new MealSlot(DAY.MONDAY, "breakfast", "recipe-1", OPERATION.REMOVE),
       ]);

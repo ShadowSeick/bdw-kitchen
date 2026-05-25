@@ -9,6 +9,7 @@ import {
 import { CalendarSync, SyncInterface } from "@/sync";
 import { SYNC_STATE, SyncAction, SyncState } from "./types";
 import { useRepositories } from "./RepositoriesProvider";
+import { CalendarLoroAdapterSubscriptor } from "@/repository/calendar";
 
 type Syncs = {
   calendar: SyncInterface;
@@ -50,9 +51,9 @@ export function SyncsProvider({ children }: Props) {
   if (!syncsRef.current) {
     syncsRef.current = {
       calendar: new CalendarSync(
-        repos.calendar.doc,
-        repos.calendar.persistent,
-        repos.calendar.persistent,
+        repos.calendar.query,
+        repos.calendar.subscriber,
+        repos.calendar.query,
       ),
     };
   }
@@ -81,11 +82,3 @@ export function SyncsProvider({ children }: Props) {
 
   return <SyncsContext.Provider value={states}>{children}</SyncsContext.Provider>;
 }
-
-export const useSyncStates = () => {
-  const ctx = useContext(SyncsContext);
-  if (!ctx) {
-    throw new Error("useSyncStates must be used inside SyncsProvider");
-  }
-  return ctx;
-};

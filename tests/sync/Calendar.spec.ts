@@ -1,7 +1,10 @@
 import { DAY } from "@/domain/calendar";
 import { ID } from "@/domain/ids";
 import { CalendarSync } from "@/sync/Calendar";
-import { CalendarLoroAdapterRepository } from "@/repository/calendar/CalendarLoroAdapter";
+import {
+  CalendarLoroAdapterRepository,
+  CalendarLoroAdapterSubscriptor,
+} from "@/repository/calendar/CalendarLoroAdapter";
 import {
   CalendarBlobStore,
   CalendarWriteRepository,
@@ -41,23 +44,25 @@ const commitAndFlush = async (doc: LoroDoc) => {
 
 describe("CalendarSync", () => {
   let doc: LoroDoc;
-  let repo: FakeWriter;
+  let loroWriter: CalendarLoroAdapterRepository;
+  let subscription: CalendarLoroAdapterSubscriptor;
+  let writer: FakeWriter;
   let blobs: FakeBlobStore;
-  let writer: CalendarLoroAdapterRepository;
   let sync: CalendarSync;
 
   beforeEach(async () => {
-    doc = CalendarLoroAdapterRepository.createCalendarDoc();
+    loroWriter = new CalendarLoroAdapterRepository();
+    doc = loroWriter.doc;
     doc.commit();
 
-    repo = new FakeWriter();
+    subscription = new CalendarLoroAdapterSubscriptor(loroWriter);
+    writer = new FakeWriter();
     blobs = new FakeBlobStore();
-    writer = new CalendarLoroAdapterRepository(doc);
-    sync = new CalendarSync(doc, repo, blobs);
+    sync = new CalendarSync(writer, subscription, blobs);
     sync.start();
     await flush();
-    repo.upsertCalls = [];
-    repo.removeCalls = [];
+    writer.upsertCalls = [];
+    writer.removeCalls = [];
     blobs.saves = [];
   });
 
@@ -65,30 +70,30 @@ describe("CalendarSync", () => {
     sync.stop();
   });
 
-  test("forwards upserts to the repository", async () => {
-    writer.upsertMeal(DAY.MONDAY, "almuerzo", "recipe-1");
+  test("forwards upserts to the writer", async () => {
+    loroWriter.upsertMeal(DAY.MONDAY, "almuerzo", "recipe-1");
     await commitAndFlush(doc);
 
-    expect(repo.upsertCalls).toEqual([
+    expect(writer.upsertCalls).toEqual([
       { day: DAY.MONDAY, meal: "almuerzo", recipeId: "recipe-1" },
     ]);
-    expect(repo.removeCalls).toEqual([]);
+    expect(writer.removeCalls).toEqual([]);
   });
 
-  test("forwards removes to the repository", async () => {
-    writer.upsertMeal(DAY.TUESDAY, "cena", "recipe-2");
+  test("forwards removes to the writer", async () => {
+    loroWriter.upsertMeal(DAY.TUESDAY, "cena", "recipe-2");
     await commitAndFlush(doc);
-    repo.upsertCalls = [];
+    writer.upsertCalls = [];
 
-    writer.removeMeal(DAY.TUESDAY, "cena");
+    loroWriter.removeMeal(DAY.TUESDAY, "cena");
     await commitAndFlush(doc);
 
-    expect(repo.removeCalls).toEqual([{ day: DAY.TUESDAY, meal: "cena" }]);
+    expect(writer.removeCalls).toEqual([{ day: DAY.TUESDAY, meal: "cena" }]);
   });
 
   test("persists a snapshot once the batch fills", async () => {
     for (let i = 0; i < BATCH_MAX_SIZE; i++) {
-      writer.upsertMeal(DAY.WEDNESDAY, `meal-${i}`, `recipe-${i}`);
+      loroWriter.upsertMeal(DAY.WEDNESDAY, `meal-${i}`, `recipe-${i}`);
       await commitAndFlush(doc);
     }
 
@@ -99,7 +104,7 @@ describe("CalendarSync", () => {
 
   test("does not persist a snapshot before the batch fills", async () => {
     for (let i = 0; i < BATCH_MAX_SIZE - 1; i++) {
-      writer.upsertMeal(DAY.THURSDAY, `meal-${i}`, `recipe-${i}`);
+      loroWriter.upsertMeal(DAY.THURSDAY, `meal-${i}`, `recipe-${i}`);
       await commitAndFlush(doc);
     }
 
@@ -107,7 +112,7 @@ describe("CalendarSync", () => {
 
     // Fire one more event to flush the batcher's pending timer so it does not
     // leak into other tests.
-    writer.upsertMeal(DAY.THURSDAY, "drain", "recipe-drain");
+    loroWriter.upsertMeal(DAY.THURSDAY, "drain", "recipe-drain");
     await commitAndFlush(doc);
     expect(blobs.saves).toHaveLength(1);
   });
@@ -115,10 +120,10 @@ describe("CalendarSync", () => {
   test("stop() detaches the subscription", async () => {
     sync.stop();
 
-    writer.upsertMeal(DAY.FRIDAY, "desayuno", "recipe-3");
+    loroWriter.upsertMeal(DAY.FRIDAY, "desayuno", "recipe-3");
     await commitAndFlush(doc);
 
-    expect(repo.upsertCalls).toEqual([]);
+    expect(writer.upsertCalls).toEqual([]);
     expect(blobs.saves).toEqual([]);
   });
 });

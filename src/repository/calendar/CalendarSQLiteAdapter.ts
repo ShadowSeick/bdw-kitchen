@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
 
-import { DAY } from "@/domain/calendar";
+import { Calendar, CALENDARS, DAY } from "@/domain/calendar";
 import { ID } from "@/domain/ids";
-import { calendar, mealSlot } from "@/infra/db/schema";
+import { calendar, calendarHistory, day, mealSlot } from "@/infra/db/schema";
 import { DB } from "@/infra/db/db";
 import {
   CalendarBlobStore,
@@ -14,6 +14,30 @@ export class CalendarSQLiteAdapterRepository
   implements CalendarWriteRepository, CalendarReadRepository, CalendarBlobStore
 {
   constructor(private db: DB) {}
+
+  // Pretty much sure this can be performed in a much straightforward way
+  get(): Calendar {
+    const rows = this.db
+      .select({
+        dayName: day.name,
+        mealName: mealSlot.mealName,
+        recipeId: mealSlot.recipeId,
+      })
+      .from(calendar)
+      .innerJoin(day, eq(day.calendarId, calendar.id))
+      .innerJoin(mealSlot, eq(mealSlot.dayId, day.id))
+      .where(eq(calendar.name, CALENDARS.WEEK))
+      .orderBy(day.name)
+      .all();
+
+    const weekdaysCalendar: Calendar = new Calendar();
+    for (const row of rows) {
+      const dayKey = row.dayName as DAY;
+      weekdaysCalendar.setMeal(dayKey, row.mealName, row.recipeId);
+    }
+
+    return weekdaysCalendar;
+  }
 
   upsertMeal(day: DAY, meal: string, recipeId: ID): void {
     this.db
@@ -35,24 +59,20 @@ export class CalendarSQLiteAdapterRepository
 
   loadBlob(): ArrayBuffer | undefined {
     const row = this.db
-      .select({ blob: calendar.blob })
-      .from(calendar)
+      .select({ blob: calendarHistory.blob })
+      .from(calendarHistory)
       .limit(1)
       .get();
     return row?.blob;
   }
 
-  saveBlob(bytes: Uint8Array): void {
-    const row = this.db
-      .select({ id: calendar.id })
-      .from(calendar)
-      .limit(1)
-      .get();
-    if (!row) return;
+  saveBlob(id: string, bytes: ArrayBuffer): void {
     this.db
-      .update(calendar)
-      .set({ blob: bytes.buffer })
-      .where(eq(calendar.id, row.id))
-      .run();
+      .insert(calendarHistory)
+      .values({ id: id, blob: bytes })
+      .onConflictDoUpdate({
+        target: [calendarHistory.id],
+        set: { blob: bytes },
+      });
   }
 }

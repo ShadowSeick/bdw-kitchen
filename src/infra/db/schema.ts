@@ -1,15 +1,37 @@
 import {
   sqliteTable,
   text,
+  integer,
   index,
   primaryKey,
   blob,
 } from "drizzle-orm/sqlite-core";
 
-export const calendar = sqliteTable("calendar", {
+// --- Histories: CRDT blobs, source of truth ---
+
+export const calendarHistory = sqliteTable("calendar_history", {
   id: text("id").primaryKey(),
-  name: text("name").notNull(),
   blob: blob("blob", { mode: "buffer" }).notNull(),
+});
+
+export const manifestHistory = sqliteTable("manifest_history", {
+  id: text("id").primaryKey(),
+  kind: text("kind").notNull(),
+  blob: blob("blob", { mode: "buffer" }).notNull(),
+});
+
+export const recipeHistory = sqliteTable("recipe_history", {
+  id: text("id").primaryKey(),
+  blob: blob("blob", { mode: "buffer" }),
+});
+
+// --- Projections: SQLite views derived from histories ---
+
+export const calendar = sqliteTable("calendar", {
+  id: text("id")
+    .primaryKey()
+    .references(() => calendarHistory.id, { onDelete: "cascade" }),
+  name: text("name").notNull().unique(),
 });
 
 export const day = sqliteTable(
@@ -27,9 +49,14 @@ export const day = sqliteTable(
 );
 
 export const recipe = sqliteTable("recipe", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
+  id: text("id")
+    .primaryKey()
+    .references(() => recipeHistory.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
   description: text("description"),
+  status: integer("status").notNull().default(0),
+  manifestRev: integer("manifest_rev").notNull().default(0),
+  localRev: integer("local_rev").notNull().default(0),
 });
 
 export const mealSlot = sqliteTable(

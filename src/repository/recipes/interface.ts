@@ -8,7 +8,13 @@ interface WriteRecipeInterface {
 
 interface ReadRecipeInterface {
   list(): Recipe[];
-  get(id: ID): void;
+  get(id: ID): Recipe;
+  loadManifest(): ArrayBuffer | undefined;
+  loadBlobById(id: ID): ArrayBuffer | undefined;
 }
 
-export { WriteRecipeInterface, ReadRecipeInterface };
+interface RecipeBlobStore {
+  saveBlob(id: string, bytes: ArrayBuffer): void;
+}
+
+export { WriteRecipeInterface, ReadRecipeInterface, RecipeBlobStore };
